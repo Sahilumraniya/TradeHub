@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import authserivce from "../appwrite/auth";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../store/authSlice";
@@ -10,18 +9,19 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { cn } from "../lib/util";
 import { toast } from "react-toastify";
-import { authenticationService, userService } from "../api/rest.app";
+import { authenticationService, userService, restApp, authCookieName, cookieStorage } from "../api/rest.app";
+import Loading from "./Loading";
 
 const Signup = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { register, handleSubmit } = useForm();
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const createUser = async (data) => {
-    setError("");
     try {
       // const userData = await authserivce.createAccount(data);
+      setLoading(true);
       const userData = await userService.create(data);
 
       // console.log("userData ::", userData);
@@ -35,22 +35,31 @@ const Signup = () => {
           strategy: "local"
         });
 
+
         // const uData = await userService.get(userData._id);
 
         if (session) {
+          localStorage.setItem(authCookieName, session.accessToken);
+          cookieStorage.setItem(authCookieName, session.accessToken);
+          await restApp.reAuthenticate();
           toast("Account created successfully", { type: "success" });
-
           const userData = session.user;
-
           dispatch(login({ userData }));
+          setLoading(false);
           navigate("/");
         }
       }
     } catch (e) {
-      setError(e.message);
+      setLoading(false);
       toast(e.message, { type: "error" });
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return <Loading />
+  }
 
   return (
     <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-white dark:bg-black">
